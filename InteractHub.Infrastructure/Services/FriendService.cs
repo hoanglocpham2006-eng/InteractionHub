@@ -16,28 +16,33 @@ public class FriendService : IFriendService
     }
 
     // Gửi lời mời kết bạn
-    public async Task<FriendResponseDto?> SendFriendRequestAsync(
-        string senderId, string receiverId)
+   public async Task SendFriendRequestAsync(string senderId, string receiverId)
     {
-        // Kiểm tra đã có friendship chưa
-        var existing = await _context.Friendships.FirstOrDefaultAsync(f =>
-            (f.SenderId == senderId && f.ReceiverId == receiverId) ||
-            (f.SenderId == receiverId && f.ReceiverId == senderId));
+        // Kiểm tra receiver có tồn tại không
+        var receiverExists = await _userManager.FindByIdAsync(receiverId);
+        if (receiverExists == null)
+            throw new Exception("Receiver user does not exist.");
 
-        if (existing != null) return null;
+        // Kiểm tra sender có tồn tại không (optional nhưng nên có)
+        var senderExists = await _userManager.FindByIdAsync(senderId);
+        if (senderExists == null)
+            throw new Exception("Sender user does not exist.");
+
+        // Kiểm tra đã có request chưa (tránh duplicate)
+        var existing = await _context.Friendships
+            .FirstOrDefaultAsync(f => f.SenderId == senderId && f.ReceiverId == receiverId);
+        if (existing != null)
+            throw new Exception("Friend request already sent.");
 
         var friendship = new Friendship
         {
             SenderId = senderId,
             ReceiverId = receiverId,
-            Status = FriendshipStatus.Pending,
-            CreatedAt = DateTime.UtcNow
+            Status = FriendshipStatus.Pending
         };
 
         _context.Friendships.Add(friendship);
-        await _context.SaveChangesAsync();
-
-        return await GetFriendshipDtoAsync(friendship.Id);
+        await _context.SaveChangesAsync(); 
     }
 
     // Chấp nhận lời mời

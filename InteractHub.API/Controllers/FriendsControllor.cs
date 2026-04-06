@@ -38,19 +38,19 @@ public class FriendsController : ControllerBase
     }
 
     // POST /api/friends/request
-    [HttpPost("request")]
-    public async Task<IActionResult> SendRequest([FromBody] FriendRequestDto dto)
+   [HttpPost("send-request")]
+    public async Task<IActionResult> SendRequest(FriendRequestDto dto)
     {
-        if (dto.ReceiverId == GetCurrentUserId())
-            return BadRequest(new { message = "Không thể kết bạn với chính mình" });
-
-        var result = await _friendService.SendFriendRequestAsync(
-            GetCurrentUserId(), dto.ReceiverId);
-
-        if (result == null)
-            return BadRequest(new { message = "Đã gửi lời mời hoặc đã là bạn bè" });
-
-        return Ok(result);
+        try
+        {
+            var senderId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _friendService.SendFriendRequestAsync(senderId, dto.ReceiverId);
+            return Ok("Friend request sent.");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message); 
+        }
     }
 
     // PUT /api/friends/accept/5
